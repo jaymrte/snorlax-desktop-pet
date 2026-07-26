@@ -1,11 +1,17 @@
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+import json
 
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QMenu
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QMovie
-import json
-SETTINGS_FILE = "settings.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
+
+
+def load_position():
+    if os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "r") as file:
+            return json.load(file)
 
 app = QApplication([])
 
@@ -28,6 +34,9 @@ class PetWindow(QWidget):
         if self.drag_position:
             difference = event.globalPosition().toPoint() - self.drag_position
             self.move(self.pos() + difference)
+            
+            save_position(self.x(), self.y())
+            
             self.drag_position = event.globalPosition().toPoint()
     
     def mouseReleaseEvent(self, event):
@@ -64,10 +73,28 @@ movie.setScaledSize(QSize(pet_size, pet_size))
 label.setMovie(movie)
 movie.start()
 
-window.move(
-    (screen_width - pet_size) // 2,
-    screen_height - 250
-)
+saved_position = load_position()
+
+def save_position(x, y):
+    with open (SETTINGS_FILE, "w") as file:
+        json.dump(
+            {
+                "x": x,
+                "y": y
+            },
+            file
+        )
+
+if saved_position:
+    window.move(
+        saved_position["x"],
+        saved_position["y"]
+    )
+else:
+    window.move(
+        (screen_width - pet_size) // 2,
+        screen_height - 250
+    )
 
 window.show()
 

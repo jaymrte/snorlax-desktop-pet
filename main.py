@@ -1,6 +1,11 @@
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QMenu
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QMovie
+import json
+SETTINGS_FILE = "settings.json"
 
 app = QApplication([])
 
@@ -52,7 +57,8 @@ label = QLabel(window)
 label.move (0, 0)
 label.resize(pet_size, pet_size)
 
-movie = QMovie("assets/snorlax.gif")
+gif_path = os.path.join(BASE_DIR, "assets", "snorlax.gif")
+movie = QMovie(gif_path)
 movie.setScaledSize(QSize(pet_size, pet_size))
 
 label.setMovie(movie)

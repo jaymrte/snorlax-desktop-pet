@@ -8,6 +8,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
 
 
+
 def load_position():
     if os.path.exists(SETTINGS_FILE):
         with open(SETTINGS_FILE, "r") as file:
@@ -16,6 +17,7 @@ def load_position():
 app = QApplication([])
 
 pet_size = 200
+resize_margin = 50
 screen = app.primaryScreen()
 geometry = screen.geometry()
 
@@ -25,25 +27,74 @@ screen_height = geometry.height()
 class PetWindow(QWidget):
     def __init__(self):
         super().__init__()
+        
         self.drag_position = None
+        self.resizing = False
+        
+        self.label = QLabel(self)
+        self.label.move (0, 0)
+        self.label.resize(pet_size, pet_size)
+
+        gif_path = os.path.join(BASE_DIR, "assets", "snorlax.gif")
+        
+        self.movie = QMovie(gif_path)
+        self.movie.setScaledSize(QSize(pet_size, pet_size))
+
+        self.label.setMovie(self.movie)
+        self.movie.start()
+        
+    
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.drag_position = event.globalPosition().toPoint()
+            
+            if (
+                event.position().x() > self.width() - resize_margin
+                and event.position().y() > self.height() - resize_margin
+            ):
+                print("RESIZE MODE")
+                self.resizing = True
+                self.resize_start = event.globalPosition().toPoint()
+                self.start_size = self.size()
+
+            else:
+                self.drag_position = event.globalPosition().toPoint()
     
     def mouseMoveEvent(self, event):
-        if self.drag_position:
-            difference = event.globalPosition().toPoint() - self.drag_position
-            self.move(self.pos() + difference)
+        
+        if self.resizing:
+            difference = event.globalPosition().toPoint() - self.resize_start
+
+            new_width = self.start_size.width() + difference.x()
+            new_height = self.start_size.height() + difference.y()
+
+            if new_width > 50 and new_height > 50:
+                self.resize(new_width, new_height)
             
-            save_position(self.x(), self.y())
+        elif self.drag_position:
+           difference = event.globalPosition().toPoint() - self.drag_position
+           self.move(self.pos() + difference)
             
-            self.drag_position = event.globalPosition().toPoint()
+           save_position(self.x(), self.y())
+            
+           self.drag_position = event.globalPosition().toPoint()
     
     def mouseReleaseEvent(self, event):
         self.drag_position = None
+        self.resizing = False
 
+    def resizeEvent(self, event):
+        new_size = self.size()
+
+        self.label.resize(new_size)
+        self.movie.setScaledSize(new_size)
+
+        self.movie.stop()
+        self.movie.start()
+
+        super().resizeEvent(event)
     def quit_pet(self):
         self.close()
+    
     def contextMenuEvent(self, event):
         menu = QMenu(self)
 
@@ -61,20 +112,6 @@ window.setWindowTitle("Snorlax Companion")
 window.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-
-label = QLabel(window)
-label.move (0, 0)
-label.resize(pet_size, pet_size)
-
-gif_path = os.path.join(BASE_DIR, "assets", "snorlax.gif")
-movie = QMovie(gif_path)
-movie.setScaledSize(QSize(pet_size, pet_size))
-
-label.setMovie(movie)
-movie.start()
-
-saved_position = load_position()
-
 def save_position(x, y):
     with open (SETTINGS_FILE, "w") as file:
         json.dump(
@@ -84,6 +121,8 @@ def save_position(x, y):
             },
             file
         )
+
+saved_position = load_position()
 
 if saved_position:
     window.move(
